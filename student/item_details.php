@@ -1,0 +1,109 @@
+<?php
+require_once '../includes/session_init.php';
+require_once '../config/db.php';
+require_once '../includes/functions.php';
+
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
+    header("Location: ../auth/login.php");
+    exit;
+}
+
+$id = $_GET['id'] ?? null;
+if (!$id) {
+    header("Location: browse_items.php");
+    exit;
+}
+
+$stmt = $pdo->prepare(
+    "SELECT products.*, categories.category_name, users.name AS seller_name, users.email AS seller_email
+     FROM products
+     JOIN categories ON products.category_id = categories.category_id
+     JOIN users ON products.seller_id = users.user_id
+     WHERE products.product_id = ?"
+);
+$stmt->execute([$id]);
+$product = $stmt->fetch();
+
+if (!$product) {
+    $pageTitle = "Item Not Found";
+    require_once '../includes/header.php';
+    echo "<p>Item not found.</p>";
+    require_once '../includes/footer.php';
+    exit;
+}
+
+$isOwner = ($product['seller_id'] == $_SESSION['user_id']);
+
+$inWishlist = false;
+if (!$isOwner) {
+    $wishCheck = $pdo->prepare("SELECT wishlist_id FROM wishlist WHERE user_id = ? AND product_id = ?");
+    $wishCheck->execute([$_SESSION['user_id'], $id]);
+    $inWishlist = (bool) $wishCheck->fetch();
+}
+
+$pageTitle = $product['title'];
+require_once '../includes/header.php';
+?>
+
+<div class="row mt-3">
+    <div class="col-12">
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success"><?= htmlspecialchars($_SESSION['success']) ?></div>
+            <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
+    </div>
+</div>
+<div class="row mt-3">
+    <div class="col-md-6">
+        <?php if ($product['image']): ?>
+            <img src="../assets/uploads/<?= htmlspecialchars($product['image']) ?>" class="img-fluid rounded shadow-sm">
+        <?php else: ?>
+            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height:300px;">
+                <span class="text-muted">No Image</span>
+            </div>
+        <?php endif; ?>
+    </div>
+    <div class="col-md-6">
+        <h2><?= htmlspecialchars($product['title']) ?></h2>
+        <p>
+            <span class="badge bg-secondary"><?= htmlspecialchars($product['category_name']) ?></span>
+            <span class="badge bg-info text-dark"><?= ucfirst($product['item_condition']) ?></span>
+            <span class="badge bg-warning text-dark"><?= $product['listing_type'] === 'rent' ? 'For Rent' : 'For Sale' ?></span>
+            <span class="badge bg-<?= $product['status'] === 'available' ? 'success' : 'danger' ?>"><?= ucfirst($product['status']) ?></span>
+        </p>
+        <h4 class="text-primary">৳<?= number_format($product['price'], 2) ?></h4>
+        <p><?= nl2br(htmlspecialchars($product['description'])) ?></p>
+        <p class="text-muted">
+            Posted by: <a href="view_profile.php?user_id=<?= $product['seller_id'] ?>"><?= htmlspecialchars($product['seller_name']) ?></a>
+            <?php $sr = get_user_rating($pdo, $product['seller_id']); ?>
+            <?php if ($sr['count'] > 0): ?>
+                <?= render_stars($sr['avg']) ?> <span class="small">(<?= $sr['avg'] ?>, <?= $sr['count'] ?> review<?= $sr['count'] > 1 ? 's' : '' ?>)</span>
+            <?php else: ?>
+                <span class="small">(no reviews yet)</span>
+            <?php endif; ?>
+        </p>
+
+        <?php if ($isOwner): ?>
+            <div class="mt-3">
+                <a href="edit_item.php?id=<?= $product['product_id'] ?>" class="btn btn-outline-secondary">Edit</a>
+                <a href="my_listings.php" class="btn btn-outline-dark">Back to My Listings</a>
+            </div>
+        <?php else: ?>
+            <div class="mt-3">
+                <?php if ($product['status'] === 'available'): ?>
+                    <a href="send_request.php?product_id=<?= $product['product_id'] ?>" class="btn btn-primary">Send Request</a>
+                <?php else: ?>
+                    <button class="btn btn-secondary" disabled>Not Available (<?= ucfirst($product['status']) ?>)</button>
+                <?php endif; ?>
+                <a href="toggle_wishlist.php?product_id=<?= $product['product_id'] ?>&redirect=item_details.php?id=<?= $product['product_id'] ?>"
+                   class="btn btn-sm <?= $inWishlist ? 'btn-danger' : 'btn-outline-danger' ?>">
+                    <?= $inWishlist ? '♥ In Wishlist' : '♡ Add to Wishlist' ?>
+                </a>
+                <a href="chat.php?product_id=<?= $product['product_id'] ?>&with=<?= $product['seller_id'] ?>" class="btn btn-outline-primary btn-sm ms-2">Message Seller</a>
+                <a href="report_item.php?product_id=<?= $product['product_id'] ?>" class="btn btn-outline-danger btn-sm ms-2">Report</a>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php require_once '../includes/footer.php'; ?>

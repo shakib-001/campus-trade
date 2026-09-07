@@ -1,0 +1,2 @@
+# Show a custom, styled page instead of Apache's default 404
+ErrorDocument 404 /campus-trade/404.php

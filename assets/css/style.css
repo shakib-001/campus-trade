@@ -1,0 +1,303 @@
+/* ============================================
+   Campus Trade — Design System
+   Concept: campus notice-board. Deep ink navy +
+   mustard accent, flat bordered "pinned notice"
+   cards instead of soft SaaS shadows.
+   ============================================ */
+
+:root {
+  /* Brand palette */
+  --ink: #1f2a44;
+  --ink-soft: #35405c;
+  --accent: #e4a11b;
+  --accent-dark: #c6870d;
+  --paper: #f2f3ef;
+  --card-bg: #ffffff;
+  --border: #e0e2e6;
+  --text-body: #3f4657;
+
+  /* Semantic status colors */
+  --status-success: #2f6f4e;
+  --status-danger: #b23a48;
+  --status-warning: #e4a11b;
+  --status-info: #3e7c86;
+  --status-secondary: #6b7280;
+
+  /* Bootstrap theme overrides: recolors every bg-, text-, badge and
+     alert utility class already used across the app's PHP pages. */
+  --bs-primary: var(--ink);
+  --bs-primary-rgb: 31, 42, 68;
+  --bs-secondary: var(--status-secondary);
+  --bs-secondary-rgb: 107, 114, 128;
+  --bs-success: var(--status-success);
+  --bs-success-rgb: 47, 111, 78;
+  --bs-danger: var(--status-danger);
+  --bs-danger-rgb: 178, 58, 72;
+  --bs-warning: var(--status-warning);
+  --bs-warning-rgb: 228, 161, 27;
+  --bs-info: var(--status-info);
+  --bs-info-rgb: 62, 124, 134;
+  --bs-dark: var(--ink);
+  --bs-dark-rgb: 31, 42, 68;
+  --bs-light: var(--paper);
+  --bs-light-rgb: 242, 243, 239;
+  --bs-body-font-family: 'Inter', system-ui, sans-serif;
+  --bs-body-color: var(--text-body);
+  --bs-body-bg: var(--paper);
+  --bs-border-color: var(--border);
+  --bs-link-color: var(--ink);
+  --bs-link-hover-color: var(--accent-dark);
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text-body);
+  background: var(--paper);
+}
+
+h1, h2, h3, h4, h5, h6,
+.navbar-brand,
+.btn {
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+}
+
+h1, h2, h3 { color: var(--ink); font-weight: 600; }
+
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- Navbar ---------- */
+.navbar {
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+}
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+}
+.navbar .btn-outline-light {
+  border-color: rgba(255,255,255,.35);
+}
+.navbar .btn-outline-light:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  border-radius: 8px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.btn-primary {
+  --bs-btn-bg: var(--ink);
+  --bs-btn-border-color: var(--ink);
+  --bs-btn-hover-bg: var(--ink-soft);
+  --bs-btn-hover-border-color: var(--ink-soft);
+  --bs-btn-active-bg: var(--ink-soft);
+  --bs-btn-active-border-color: var(--ink-soft);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--ink);
+  --bs-btn-border-color: var(--ink);
+  --bs-btn-hover-bg: var(--ink);
+  --bs-btn-hover-border-color: var(--ink);
+}
+.btn-warning, .btn-outline-warning:hover {
+  color: var(--ink);
+}
+/* A single warm highlight action — used sparingly (hero CTA) */
+.btn-accent {
+  background-color: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--ink);
+  font-weight: 600;
+}
+.btn-accent:hover {
+  background-color: var(--accent-dark);
+  border-color: var(--accent-dark);
+  color: var(--ink);
+}
+
+/* ---------- Cards: flat "pinned notice" style instead of soft shadow ---------- */
+.card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.shadow-sm {
+  box-shadow: none !important;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: 12px;
+}
+.card-img-top {
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+}
+
+/* ---------- Forms ---------- */
+.form-control, .form-select {
+  border-radius: 8px;
+  border-color: var(--border);
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 0.2rem rgba(31, 42, 68, 0.12);
+}
+.form-label {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* ---------- Alerts ---------- */
+.alert-success { background-color: #eaf3ee; border-color: #cfe4d8; color: var(--status-success); }
+.alert-danger { background-color: #f8eaec; border-color: #edd0d4; color: var(--status-danger); }
+
+/* ---------- Empty states ---------- */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--status-secondary);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+.empty-state .empty-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: .5rem;
+}
+
+/* ---------- Hero (homepage) ---------- */
+.hero {
+  padding: 4rem 0 3rem;
+}
+.hero h1 {
+  font-size: 2.75rem;
+  line-height: 1.15;
+  max-width: 14ch;
+}
+.hero p.lead {
+  max-width: 46ch;
+  color: var(--text-body);
+}
+.hero-board {
+  position: relative;
+  height: 320px;
+}
+.hero-note {
+  position: absolute;
+  width: 200px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--accent);
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 6px 16px rgba(31, 42, 68, 0.08);
+}
+.hero-note h6 { margin: 0 0 .25rem; font-size: .95rem; }
+.hero-note .price { color: var(--status-success); font-weight: 700; }
+.hero-note.note-1 { top: 0; left: 10%; transform: rotate(-4deg); }
+.hero-note.note-2 { top: 90px; left: 45%; transform: rotate(3deg); border-top-color: var(--status-info); z-index: 2; }
+.hero-note.note-3 { top: 190px; left: 5%; transform: rotate(2deg); border-top-color: var(--status-success); }
+
+@media (max-width: 991px) {
+  .hero-board { display: none; }
+}
+
+/* ---------- How it works ---------- */
+.step-num {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: 'Space Grotesk', sans-serif;
+  flex-shrink: 0;
+}
+
+/* ---------- Star rating (leave_review.php) ---------- */
+.star-rating {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+.star-rating input { display: none; }
+.star-rating label {
+  cursor: pointer;
+  font-size: 2.25rem;
+  line-height: 1;
+  color: #d8dadd;
+  padding: 0 2px;
+  transition: color .15s;
+}
+.star-rating input:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+  color: var(--accent);
+}
+
+/* ---------- Chat ---------- */
+.chat-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* ---------- Star display (view profile / seller rating) ---------- */
+.stars-display { font-size: 1.05rem; letter-spacing: 1px; }
+.stars-display .star-filled { color: var(--accent); }
+.stars-display .star-empty { color: #d8dadd; }
+
+/* ---------- Avatar ---------- */
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,.4);
+}
+.avatar-lg {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--border);
+}
+.avatar-placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ---------- Pagination ---------- */
+.page-link {
+  color: var(--ink);
+}
+.page-item.active .page-link {
+  background-color: var(--ink);
+  border-color: var(--ink);
+}
+.page-link:hover {
+  color: var(--ink);
+  background-color: var(--paper);
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+  border-top: 1px solid var(--border);
+  color: var(--status-secondary);
+  margin-top: 4rem;
+}
