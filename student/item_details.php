@@ -95,15 +95,39 @@ require_once '../includes/header.php';
                 <?php else: ?>
                     <button class="btn btn-secondary" disabled>Not Available (<?= ucfirst($product['status']) ?>)</button>
                 <?php endif; ?>
-                <a href="toggle_wishlist.php?product_id=<?= $product['product_id'] ?>&redirect=item_details.php?id=<?= $product['product_id'] ?>"
-                   class="btn btn-sm <?= $inWishlist ? 'btn-danger' : 'btn-outline-danger' ?>">
+                <button type="button" id="wishlistBtn" class="btn btn-sm <?= $inWishlist ? 'btn-danger' : 'btn-outline-danger' ?>"
+                        data-product-id="<?= $product['product_id'] ?>" data-in-wishlist="<?= $inWishlist ? '1' : '0' ?>">
                     <?= $inWishlist ? '♥ In Wishlist' : '♡ Add to Wishlist' ?>
-                </a>
+                </button>
                 <a href="chat.php?product_id=<?= $product['product_id'] ?>&with=<?= $product['seller_id'] ?>" class="btn btn-outline-primary btn-sm ms-2">Message Seller</a>
                 <a href="report_item.php?product_id=<?= $product['product_id'] ?>" class="btn btn-outline-danger btn-sm ms-2">Report</a>
             </div>
         <?php endif; ?>
     </div>
 </div>
+
+<?php if (!$isOwner): ?>
+<script>
+document.getElementById('wishlistBtn').addEventListener('click', function () {
+    const btn = this;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const body = new URLSearchParams({ product_id: btn.dataset.productId, csrf_token: csrfToken });
+
+    btn.disabled = true;
+    fetch('../api/wishlist_toggle.php', { method: 'POST', body })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) { alert(data.error || 'Something went wrong.'); return; }
+            const inWishlist = data.status === 'added';
+            btn.dataset.inWishlist = inWishlist ? '1' : '0';
+            btn.textContent = inWishlist ? '♥ In Wishlist' : '♡ Add to Wishlist';
+            btn.classList.toggle('btn-danger', inWishlist);
+            btn.classList.toggle('btn-outline-danger', !inWishlist);
+        })
+        .catch(() => alert('Network error — please try again.'))
+        .finally(() => { btn.disabled = false; });
+});
+</script>
+<?php endif; ?>
 
 <?php require_once '../includes/footer.php'; ?>

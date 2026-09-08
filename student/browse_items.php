@@ -123,10 +123,10 @@ require_once '../includes/header.php';
                     </p>
                     <a href="item_details.php?id=<?= $product['product_id'] ?>" class="btn btn-outline-primary btn-sm w-100 mb-1">View Details</a>
                     <?php $inWishlist = in_array($product['product_id'], $wishlistedIds); ?>
-                    <a href="toggle_wishlist.php?product_id=<?= $product['product_id'] ?>&redirect=browse_items.php"
-                       class="btn btn-sm w-100 <?= $inWishlist ? 'btn-danger' : 'btn-outline-danger' ?>">
+                    <button type="button" class="btn btn-sm w-100 wishlist-btn <?= $inWishlist ? 'btn-danger' : 'btn-outline-danger' ?>"
+                            data-product-id="<?= $product['product_id'] ?>" data-in-wishlist="<?= $inWishlist ? '1' : '0' ?>">
                         <?= $inWishlist ? '♥ In Wishlist' : '♡ Add to Wishlist' ?>
-                    </a>
+                    </button>
                 </div>
             </div>
         </div>
@@ -146,5 +146,29 @@ require_once '../includes/header.php';
         </ul>
     </nav>
 <?php endif; ?>
+
+<script>
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.wishlist-btn');
+    if (!btn) return;
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const body = new URLSearchParams({ product_id: btn.dataset.productId, csrf_token: csrfToken });
+
+    btn.disabled = true;
+    fetch('../api/wishlist_toggle.php', { method: 'POST', body })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) { alert(data.error || 'Something went wrong.'); return; }
+            const inWishlist = data.status === 'added';
+            btn.dataset.inWishlist = inWishlist ? '1' : '0';
+            btn.textContent = inWishlist ? '♥ In Wishlist' : '♡ Add to Wishlist';
+            btn.classList.toggle('btn-danger', inWishlist);
+            btn.classList.toggle('btn-outline-danger', !inWishlist);
+        })
+        .catch(() => alert('Network error — please try again.'))
+        .finally(() => { btn.disabled = false; });
+});
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

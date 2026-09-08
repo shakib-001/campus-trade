@@ -19,4 +19,15 @@ function csrf_verify() {
         die("Your form session expired or is invalid. Please go back and try submitting again.");
     }
 }
+
+// Same check, but for JSON API endpoints — returns a JSON error instead of
+// dying with a plain-text page, so fetch() callers can handle it gracefully.
+function csrf_verify_json() {
+    if (empty($_POST['csrf_token']) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        header('Content-Type: application/json');
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid or expired session. Please refresh the page.']);
+        exit;
+    }
+}
 ?>
