@@ -6,6 +6,7 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/Wishlist.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
@@ -23,15 +24,6 @@ if (!$product_id) {
     exit;
 }
 
-$check = $pdo->prepare("SELECT wishlist_id FROM wishlist WHERE user_id = ? AND product_id = ?");
-$check->execute([$_SESSION['user_id'], $product_id]);
-$existing = $check->fetch();
-
-if ($existing) {
-    $pdo->prepare("DELETE FROM wishlist WHERE wishlist_id = ?")->execute([$existing['wishlist_id']]);
-    echo json_encode(['success' => true, 'status' => 'removed']);
-} else {
-    $pdo->prepare("INSERT INTO wishlist (user_id, product_id) VALUES (?, ?)")->execute([$_SESSION['user_id'], $product_id]);
-    echo json_encode(['success' => true, 'status' => 'added']);
-}
+$status = Wishlist::toggle($_SESSION['user_id'], $product_id);
+echo json_encode(['success' => true, 'status' => $status]);
 ?>

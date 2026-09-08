@@ -6,6 +6,7 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/Message.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
@@ -27,15 +28,6 @@ if (!$product_id || !$with || $with == $myId || $text === '') {
     exit;
 }
 
-$stmt = $pdo->prepare(
-    "INSERT INTO messages (sender_id, receiver_id, product_id, message_text) VALUES (?, ?, ?, ?)"
-);
-$stmt->execute([$myId, $with, $product_id, $text]);
-$messageId = $pdo->lastInsertId();
-
-$stmt = $pdo->prepare("SELECT * FROM messages WHERE message_id = ?");
-$stmt->execute([$messageId]);
-$message = $stmt->fetch();
-
+$message = Message::send($myId, $with, $product_id, $text);
 echo json_encode(['success' => true, 'message' => $message]);
 ?>

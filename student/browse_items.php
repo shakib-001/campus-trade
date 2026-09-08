@@ -1,67 +1,31 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
-require_once '../includes/functions.php';
+require_once '../app/models/Category.php';
+require_once '../app/models/Product.php';
+require_once '../app/models/Wishlist.php';
+require_once '../app/models/User.php';
+require_once '../app/models/Review.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$categories = $pdo->query("SELECT * FROM categories ORDER BY category_name")->fetchAll();
+$categories = Category::all();
 
-// Build filter query
 $category_id = $_GET['category_id'] ?? '';
 $keyword = trim($_GET['keyword'] ?? '');
 
-$sql = "SELECT products.*, categories.category_name, users.name AS seller_name
-        FROM products
-        JOIN categories ON products.category_id = categories.category_id
-        JOIN users ON products.seller_id = users.user_id
-        WHERE products.status = 'available'";
-$params = [];
-
-if (!empty($category_id)) {
-    $sql .= " AND products.category_id = ?";
-    $params[] = $category_id;
-}
-if (!empty($keyword)) {
-    $sql .= " AND products.title LIKE ?";
-    $params[] = "%$keyword%";
-}
-$sql .= " ORDER BY products.posted_at DESC";
-
-// Pagination
 $perPage = 9;
-$page = max(1, (int)($_GET['page'] ?? 1));
-$offset = ($page - 1) * $perPage;
+$page = max(1, (int) ($_GET['page'] ?? 1));
 
-// Count total matching items first (same filters, no LIMIT)
-$countSql = "SELECT COUNT(*) FROM products WHERE products.status = 'available'";
-$countParams = [];
-if (!empty($category_id)) {
-    $countSql .= " AND products.category_id = ?";
-    $countParams[] = $category_id;
-}
-if (!empty($keyword)) {
-    $countSql .= " AND products.title LIKE ?";
-    $countParams[] = "%$keyword%";
-}
-$countStmt = $pdo->prepare($countSql);
-$countStmt->execute($countParams);
-$totalItems = $countStmt->fetchColumn();
+$totalItems = Product::countAvailable($category_id, $keyword);
 $totalPages = max(1, ceil($totalItems / $perPage));
+$products = Product::findAvailable($category_id, $keyword, $perPage, $page);
 
-$sql .= " LIMIT $perPage OFFSET $offset";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$products = $stmt->fetchAll();
-
-// Get this user's wishlisted product IDs so we can show filled/empty heart
-$wishStmt = $pdo->prepare("SELECT product_id FROM wishlist WHERE user_id = ?");
-$wishStmt->execute([$_SESSION['user_id']]);
-$wishlistedIds = $wishStmt->fetchAll(PDO::FETCH_COLUMN);
+// This user's wishlisted product IDs, so we can show filled/empty heart icons
+$wishlistedIds = Wishlist::productIdsForUser($_SESSION['user_id']);
 
 $pageTitle = "Browse Items";
 require_once '../includes/header.php';
@@ -116,9 +80,9 @@ require_once '../includes/header.php';
                     <p class="fw-bold">৳<?= number_format($product['price'], 2) ?></p>
                     <p class="text-muted small">
                         Seller: <a href="view_profile.php?user_id=<?= $product['seller_id'] ?>"><?= htmlspecialchars($product['seller_name']) ?></a>
-                        <?php $sr = get_user_rating($pdo, $product['seller_id']); ?>
+                        <?php $sr = User::getRating($product['seller_id']); ?>
                         <?php if ($sr['count'] > 0): ?>
-                            <?= render_stars($sr['avg']) ?> <span>(<?= $sr['count'] ?>)</span>
+                            <?= Review::renderStars($sr['avg']) ?> <span>(<?= $sr['count'] ?>)</span>
                         <?php endif; ?>
                     </p>
                     <a href="item_details.php?id=<?= $product['product_id'] ?>" class="btn btn-outline-primary btn-sm w-100 mb-1">View Details</a>

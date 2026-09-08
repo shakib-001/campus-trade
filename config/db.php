@@ -1,21 +1,7 @@
 <?php
 // config/db.php
-$host = "localhost";
-$dbname = "campus_trade";
-$username = "root";
-$password = ""; // XAMPP default is empty
-
-try {
-    $pdo = new PDO(
-        "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
-        $username,
-        $password,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ]
-    );
-} catch (PDOException $e) {
-    die("Database connection failed: " . $e->getMessage());
-}
+// Delegates to app/Database.php (the new MVC-style singleton connection),
+// but still exposes $pdo so all existing pages keep working unchanged.
+require_once __DIR__ . '/../app/Database.php';
+$pdo = Database::connect();
 ?>
