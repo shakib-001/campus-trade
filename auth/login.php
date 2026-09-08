@@ -38,6 +38,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['user_id'] = $user['user_id'];
                     $_SESSION['name'] = $user['name'];
                     $_SESSION['role'] = $user['role'];
+                    $_SESSION['last_activity'] = time();
+
+                    if (!empty($_POST['remember_me'])) {
+                        $selector = bin2hex(random_bytes(12));
+                        $validator = bin2hex(random_bytes(32));
+                        $expires = date('Y-m-d H:i:s', strtotime('+30 days'));
+
+                        $pdo->prepare(
+                            "INSERT INTO remember_tokens (user_id, selector, hashed_validator, expires_at) VALUES (?, ?, ?, ?)"
+                        )->execute([$user['user_id'], $selector, hash('sha256', $validator), $expires]);
+
+                        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+                        setcookie('remember_token', $selector . ':' . $validator, [
+                            'expires' => strtotime('+30 days'),
+                            'path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => $isHttps,
+                        ]);
+                    }
 
                     if ($user['role'] === 'admin') {
                         header("Location: ../admin/dashboard.php");
@@ -90,6 +107,10 @@ require_once '../includes/header.php';
                         <label class="form-label">Password</label>
                         <input type="password" name="password" class="form-control" required>
                         <div class="text-end mt-1"><a href="forgot_password.php" class="small">Forgot Password?</a></div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="remember_me" value="1" class="form-check-input" id="rememberMe">
+                        <label class="form-check-label" for="rememberMe">Remember me for 30 days</label>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Login</button>
                 </form>

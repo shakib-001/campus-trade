@@ -92,6 +92,18 @@ CREATE TABLE reports (
   FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
+-- "Remember Me" tokens — selector/validator pattern (safe even if the DB ever leaked,
+-- since only a hash of the validator is stored, never the raw token)
+CREATE TABLE remember_tokens (
+  token_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  selector VARCHAR(64),
+  hashed_validator VARCHAR(255),
+  expires_at DATETIME,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
 -- Login attempts, used for rate-limiting brute-force login attempts
 CREATE TABLE login_attempts (
   attempt_id INT AUTO_INCREMENT PRIMARY KEY,
