@@ -2,6 +2,8 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/Product.php';
+require_once '../app/models/Report.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -14,9 +16,7 @@ if (!$product_id) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT * FROM products WHERE product_id = ?");
-$stmt->execute([$product_id]);
-$product = $stmt->fetch();
+$product = Product::findById($product_id);
 
 if (!$product) {
     header("Location: browse_items.php");
@@ -31,10 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($reason)) {
         $errors[] = "Please describe why you're reporting this item.";
     } else {
-        $stmt = $pdo->prepare(
-            "INSERT INTO reports (reporter_id, product_id, reason, status) VALUES (?, ?, ?, 'pending')"
-        );
-        $stmt->execute([$_SESSION['user_id'], $product_id, $reason]);
+        Report::create($_SESSION['user_id'], $product_id, $reason);
 
         $_SESSION['success'] = "Thanks — your report has been submitted for review.";
         header("Location: item_details.php?id=" . $product_id);

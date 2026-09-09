@@ -3,6 +3,7 @@ require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
 require_once '../includes/SimpleMailer.php';
+require_once '../app/models/User.php';
 
 $errors = [];
 $resetLink = null;
@@ -13,9 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
     $email = trim($_POST['email']);
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch();
+    $user = User::findByEmail($email);
 
     if (!$user) {
         // Don't reveal whether the email exists — just show a generic message either way
@@ -25,8 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $token = bin2hex(random_bytes(32));
         $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
-        $pdo->prepare("UPDATE users SET reset_token = ?, reset_expires = ? WHERE user_id = ?")
-            ->execute([$token, $expires, $user['user_id']]);
+        User::setResetToken($user['user_id'], $token, $expires);
 
         $resetLink = "reset_password.php?token=" . $token;
 

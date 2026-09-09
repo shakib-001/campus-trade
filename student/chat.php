@@ -2,6 +2,9 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/Product.php';
+require_once '../app/models/User.php';
+require_once '../app/models/Message.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -18,13 +21,8 @@ if (!$product_id || !$with || $with == $myId) {
 }
 
 // Confirm the product and the other user both exist
-$stmt = $pdo->prepare("SELECT * FROM products WHERE product_id = ?");
-$stmt->execute([$product_id]);
-$product = $stmt->fetch();
-
-$stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
-$stmt->execute([$with]);
-$otherUser = $stmt->fetch();
+$product = Product::findById($product_id);
+$otherUser = User::findById($with);
 
 if (!$product || !$otherUser) {
     header("Location: messages.php");
@@ -36,10 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
     $text = trim($_POST['message_text'] ?? '');
     if (!empty($text)) {
-        $stmt = $pdo->prepare(
-            "INSERT INTO messages (sender_id, receiver_id, product_id, message_text) VALUES (?, ?, ?, ?)"
-        );
-        $stmt->execute([$myId, $with, $product_id, $text]);
+        Message::send($myId, $with, $product_id, $text);
     }
     // Redirect (PRG pattern) to avoid re-submitting the message on refresh
     header("Location: chat.php?product_id=$product_id&with=$with");
@@ -47,13 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch the full thread between these two users for this product
-$stmt = $pdo->prepare(
-    "SELECT * FROM messages
-     WHERE product_id = ? AND ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-     ORDER BY sent_at ASC"
-);
-$stmt->execute([$product_id, $myId, $with, $with, $myId]);
-$messages = $stmt->fetchAll();
+$messages = Message::findConversation($product_id, $myId, $with);
 
 $pageTitle = 'Chat with ' . $otherUser['name'];
 require_once '../includes/header.php';

@@ -2,6 +2,7 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/User.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -16,9 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $new = $_POST['new_password'];
     $confirm = $_POST['confirm_password'];
 
-    $stmt = $pdo->prepare("SELECT password FROM users WHERE user_id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $user = $stmt->fetch();
+    $user = User::findById($_SESSION['user_id']);
 
     if (!password_verify($current, $user['password'])) {
         $errors[] = "Current password is incorrect.";
@@ -32,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         $hashed = password_hash($new, PASSWORD_DEFAULT);
-        $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?")->execute([$hashed, $_SESSION['user_id']]);
+        User::updatePassword($_SESSION['user_id'], $hashed);
 
         $_SESSION['success'] = "Password changed successfully.";
         header("Location: profile.php");

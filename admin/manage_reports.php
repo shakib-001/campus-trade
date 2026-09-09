@@ -1,21 +1,14 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
+require_once '../app/models/Report.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$reports = $pdo->query(
-    "SELECT reports.*, products.title AS product_title, products.status AS product_status,
-            reporter.name AS reporter_name, seller.name AS seller_name
-     FROM reports
-     JOIN products ON reports.product_id = products.product_id
-     JOIN users AS reporter ON reports.reporter_id = reporter.user_id
-     JOIN users AS seller ON products.seller_id = seller.user_id
-     ORDER BY reports.reported_at DESC"
-)->fetchAll();
+$reports = Report::all();
 
 $pageTitle = "Reported Items";
 require_once '../includes/header.php';

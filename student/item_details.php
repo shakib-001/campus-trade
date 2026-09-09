@@ -1,7 +1,10 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
-require_once '../includes/functions.php';
+require_once '../app/models/Product.php';
+require_once '../app/models/Wishlist.php';
+require_once '../app/models/User.php';
+require_once '../app/models/Review.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -14,15 +17,7 @@ if (!$id) {
     exit;
 }
 
-$stmt = $pdo->prepare(
-    "SELECT products.*, categories.category_name, users.name AS seller_name, users.email AS seller_email
-     FROM products
-     JOIN categories ON products.category_id = categories.category_id
-     JOIN users ON products.seller_id = users.user_id
-     WHERE products.product_id = ?"
-);
-$stmt->execute([$id]);
-$product = $stmt->fetch();
+$product = Product::findById($id);
 
 if (!$product) {
     $pageTitle = "Item Not Found";
@@ -36,9 +31,7 @@ $isOwner = ($product['seller_id'] == $_SESSION['user_id']);
 
 $inWishlist = false;
 if (!$isOwner) {
-    $wishCheck = $pdo->prepare("SELECT wishlist_id FROM wishlist WHERE user_id = ? AND product_id = ?");
-    $wishCheck->execute([$_SESSION['user_id'], $id]);
-    $inWishlist = (bool) $wishCheck->fetch();
+    $inWishlist = in_array($id, Wishlist::productIdsForUser($_SESSION['user_id']));
 }
 
 $pageTitle = $product['title'];
@@ -75,9 +68,9 @@ require_once '../includes/header.php';
         <p><?= nl2br(htmlspecialchars($product['description'])) ?></p>
         <p class="text-muted">
             Posted by: <a href="view_profile.php?user_id=<?= $product['seller_id'] ?>"><?= htmlspecialchars($product['seller_name']) ?></a>
-            <?php $sr = get_user_rating($pdo, $product['seller_id']); ?>
+            <?php $sr = User::getRating($product['seller_id']); ?>
             <?php if ($sr['count'] > 0): ?>
-                <?= render_stars($sr['avg']) ?> <span class="small">(<?= $sr['avg'] ?>, <?= $sr['count'] ?> review<?= $sr['count'] > 1 ? 's' : '' ?>)</span>
+                <?= Review::renderStars($sr['avg']) ?> <span class="small">(<?= $sr['avg'] ?>, <?= $sr['count'] ?> review<?= $sr['count'] > 1 ? 's' : '' ?>)</span>
             <?php else: ?>
                 <span class="small">(no reviews yet)</span>
             <?php endif; ?>

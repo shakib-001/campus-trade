@@ -1,22 +1,14 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
+require_once '../app/models/ProductRequest.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$stmt = $pdo->prepare(
-    "SELECT requests.*, products.title, products.price, products.status AS product_status, users.name AS buyer_name
-     FROM requests
-     JOIN products ON requests.product_id = products.product_id
-     JOIN users ON requests.buyer_id = users.user_id
-     WHERE products.seller_id = ?
-     ORDER BY requests.requested_at DESC"
-);
-$stmt->execute([$_SESSION['user_id']]);
-$requests = $stmt->fetchAll();
+$requests = ProductRequest::findBySeller($_SESSION['user_id']);
 
 $pageTitle = "Incoming Requests";
 require_once '../includes/header.php';

@@ -35,17 +35,12 @@ $_SESSION['last_activity'] = time();
 // remember-me cookie exists, log the user back in transparently.
 if (!isset($_SESSION['user_id']) && !empty($_COOKIE['remember_token'])) {
     require_once __DIR__ . '/../config/db.php';
+    require_once __DIR__ . '/../app/models/RememberToken.php';
 
     [$selector, $validator] = array_pad(explode(':', $_COOKIE['remember_token'], 2), 2, null);
 
     if ($selector && $validator) {
-        $stmt = $pdo->prepare(
-            "SELECT remember_tokens.*, users.* FROM remember_tokens
-             JOIN users ON remember_tokens.user_id = users.user_id
-             WHERE selector = ? AND expires_at > NOW()"
-        );
-        $stmt->execute([$selector]);
-        $row = $stmt->fetch();
+        $row = RememberToken::findValidBySelector($selector);
 
         if ($row && hash_equals($row['hashed_validator'], hash('sha256', $validator)) && $row['status'] !== 'blocked') {
             $_SESSION['user_id'] = $row['user_id'];
@@ -55,8 +50,7 @@ if (!isset($_SESSION['user_id']) && !empty($_COOKIE['remember_token'])) {
 
             // Rotate the validator on each auto-login — limits damage if a cookie is ever stolen
             $newValidator = bin2hex(random_bytes(32));
-            $pdo->prepare("UPDATE remember_tokens SET hashed_validator = ? WHERE token_id = ?")
-                ->execute([hash('sha256', $newValidator), $row['token_id']]);
+            RememberToken::rotate($row['token_id'], hash('sha256', $newValidator));
             setcookie('remember_token', $selector . ':' . $newValidator, [
                 'expires' => strtotime('+30 days'),
                 'path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => $isHttps,

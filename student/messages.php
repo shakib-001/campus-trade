@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
+require_once '../app/models/Message.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -8,19 +9,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
 }
 
 $myId = $_SESSION['user_id'];
-
-$stmt = $pdo->prepare(
-    "SELECT messages.*, products.title AS product_title,
-            sender.name AS sender_name, receiver.name AS receiver_name
-     FROM messages
-     JOIN products ON messages.product_id = products.product_id
-     JOIN users AS sender ON messages.sender_id = sender.user_id
-     JOIN users AS receiver ON messages.receiver_id = receiver.user_id
-     WHERE messages.sender_id = ? OR messages.receiver_id = ?
-     ORDER BY messages.sent_at DESC"
-);
-$stmt->execute([$myId, $myId]);
-$allMessages = $stmt->fetchAll();
+$allMessages = Message::findAllForUser($myId);
 
 // Group into unique conversations (product + other user), keeping only the latest message per group
 $conversations = [];

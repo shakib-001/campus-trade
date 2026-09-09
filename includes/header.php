@@ -52,9 +52,9 @@
             <div class="d-flex align-items-center mt-3 mt-lg-0 ms-lg-3">
                 <?php if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'student'): ?>
                     <?php
-                        $navAvatarStmt = $pdo->prepare("SELECT profile_pic FROM users WHERE user_id = ?");
-                        $navAvatarStmt->execute([$_SESSION['user_id']]);
-                        $navAvatarPic = $navAvatarStmt->fetchColumn();
+                        require_once __DIR__ . '/../app/models/User.php';
+                        $navUser = User::findById($_SESSION['user_id']);
+                        $navAvatarPic = $navUser['profile_pic'] ?? null;
                     ?>
                     <div class="dropdown">
                         <a class="d-flex align-items-center text-light dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">

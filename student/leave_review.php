@@ -2,6 +2,8 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/ProductRequest.php';
+require_once '../app/models/Review.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -15,13 +17,7 @@ if (!$request_id) {
 }
 
 // Fetch the request and confirm it's completed and the current user was part of it
-$stmt = $pdo->prepare(
-    "SELECT requests.*, products.title AS product_title, products.seller_id
-     FROM requests JOIN products ON requests.product_id = products.product_id
-     WHERE requests.request_id = ? AND requests.status = 'completed'"
-);
-$stmt->execute([$request_id]);
-$req = $stmt->fetch();
+$req = ProductRequest::findCompleted($request_id);
 
 if (!$req || ($req['buyer_id'] != $_SESSION['user_id'] && $req['seller_id'] != $_SESSION['user_id'])) {
     header("Location: my_requests.php");
@@ -33,9 +29,7 @@ $isBuyer = ($req['buyer_id'] == $_SESSION['user_id']);
 $reviewedUserId = $isBuyer ? $req['seller_id'] : $req['buyer_id'];
 
 // Prevent duplicate review for this request
-$check = $pdo->prepare("SELECT review_id FROM reviews WHERE reviewer_id = ? AND request_id = ?");
-$check->execute([$_SESSION['user_id'], $request_id]);
-if ($check->fetch()) {
+if (Review::existsForRequest($_SESSION['user_id'], $request_id)) {
     $_SESSION['success'] = "You've already reviewed this transaction.";
     header("Location: " . ($isBuyer ? 'my_requests.php' : 'incoming_requests.php'));
     exit;
@@ -53,10 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $stmt = $pdo->prepare(
-            "INSERT INTO reviews (reviewer_id, reviewed_user_id, request_id, rating, comment) VALUES (?, ?, ?, ?, ?)"
-        );
-        $stmt->execute([$_SESSION['user_id'], $reviewedUserId, $request_id, $rating, $comment]);
+        Review::create($_SESSION['user_id'], $reviewedUserId, $request_id, $rating, $comment);
 
         $_SESSION['success'] = "Review submitted. Thanks!";
         header("Location: " . ($isBuyer ? 'my_requests.php' : 'incoming_requests.php'));

@@ -71,5 +71,23 @@ class User {
             'count' => (int) $row['cnt'],
         ];
     }
+
+    // --- Password reset (forgot-password flow) ---
+
+    public static function setResetToken($userId, $token, $expiresAt) {
+        $stmt = self::db()->prepare("UPDATE users SET reset_token = ?, reset_expires = ? WHERE user_id = ?");
+        $stmt->execute([$token, $expiresAt, $userId]);
+    }
+
+    public static function findByValidResetToken($token) {
+        $stmt = self::db()->prepare("SELECT * FROM users WHERE reset_token = ? AND reset_expires > NOW()");
+        $stmt->execute([$token]);
+        return $stmt->fetch();
+    }
+
+    public static function clearResetToken($userId) {
+        self::db()->prepare("UPDATE users SET reset_token = NULL, reset_expires = NULL WHERE user_id = ?")
+            ->execute([$userId]);
+    }
 }
 ?>

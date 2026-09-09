@@ -101,5 +101,9 @@ class Product {
         $stmt->execute([$productId, $userId]);
         return (bool) $stmt->fetch();
     }
+
+    public static function countAll() {
+        return (int) self::db()->query("SELECT COUNT(*) FROM products")->fetchColumn();
+    }
 }
 ?>

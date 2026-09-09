@@ -2,6 +2,8 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/Product.php';
+require_once '../app/models/Category.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -15,16 +17,14 @@ if (!$id) {
 }
 
 // Fetch item and verify ownership
-$stmt = $pdo->prepare("SELECT * FROM products WHERE product_id = ?");
-$stmt->execute([$id]);
-$product = $stmt->fetch();
+$product = Product::findById($id);
 
 if (!$product || $product['seller_id'] != $_SESSION['user_id']) {
     header("Location: my_listings.php");
     exit;
 }
 
-$categories = $pdo->query("SELECT * FROM categories ORDER BY category_name")->fetchAll();
+$categories = Category::all();
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -57,11 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $stmt = $pdo->prepare(
-            "UPDATE products SET title=?, category_id=?, description=?, price=?, item_condition=?, listing_type=?, image=?
-             WHERE product_id=?"
-        );
-        $stmt->execute([$title, $category_id, $description, $price, $item_condition, $listing_type, $imageName, $id]);
+        Product::update($id, $title, $category_id, $description, $price, $item_condition, $listing_type, $imageName);
 
         $_SESSION['success'] = "Item updated successfully!";
         header("Location: my_listings.php");

@@ -1,21 +1,14 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
+require_once '../app/models/Product.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$stmt = $pdo->prepare(
-    "SELECT products.*, categories.category_name
-     FROM products
-     JOIN categories ON products.category_id = categories.category_id
-     WHERE products.seller_id = ?
-     ORDER BY products.posted_at DESC"
-);
-$stmt->execute([$_SESSION['user_id']]);
-$products = $stmt->fetchAll();
+$products = Product::findBySeller($_SESSION['user_id']);
 
 $pageTitle = "My Listings";
 require_once '../includes/header.php';

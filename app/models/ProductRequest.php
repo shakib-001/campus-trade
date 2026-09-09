@@ -97,5 +97,16 @@ class ProductRequest {
         $row = $stmt->fetch();
         return ($row && $row['seller_id'] == $sellerId) ? $row : false;
     }
+
+    /** Fetches a request (with product title + seller_id) only if its status is 'completed'. Used for review eligibility. */
+    public static function findCompleted($requestId) {
+        $stmt = self::db()->prepare(
+            "SELECT requests.*, products.title AS product_title, products.seller_id
+             FROM requests JOIN products ON requests.product_id = products.product_id
+             WHERE requests.request_id = ? AND requests.status = 'completed'"
+        );
+        $stmt->execute([$requestId]);
+        return $stmt->fetch();
+    }
 }
 ?>

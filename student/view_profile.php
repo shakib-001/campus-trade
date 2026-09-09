@@ -1,7 +1,8 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
-require_once '../includes/functions.php';
+require_once '../app/models/User.php';
+require_once '../app/models/Review.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -14,26 +15,15 @@ if (!$user_id) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$user = $stmt->fetch();
+$user = User::findById($user_id);
 
 if (!$user) {
     header("Location: browse_items.php");
     exit;
 }
 
-$reviewStmt = $pdo->prepare(
-    "SELECT reviews.*, reviewer.name AS reviewer_name
-     FROM reviews
-     JOIN users AS reviewer ON reviews.reviewer_id = reviewer.user_id
-     WHERE reviews.reviewed_user_id = ?
-     ORDER BY reviews.created_at DESC"
-);
-$reviewStmt->execute([$user_id]);
-$reviews = $reviewStmt->fetchAll();
-
-$rating = get_user_rating($pdo, $user_id);
+$reviews = Review::findForUser($user_id);
+$rating = User::getRating($user_id);
 
 $pageTitle = $user['name'];
 require_once '../includes/header.php';
@@ -49,7 +39,7 @@ require_once '../includes/header.php';
         <div>
             <h3 class="mb-1"><?= htmlspecialchars($user['name']) ?></h3>
             <?php if ($rating['count'] > 0): ?>
-                <div><?= render_stars($rating['avg']) ?> <span class="text-muted"><?= $rating['avg'] ?> / 5 (<?= $rating['count'] ?> review<?= $rating['count'] > 1 ? 's' : '' ?>)</span></div>
+                <div><?= Review::renderStars($rating['avg']) ?> <span class="text-muted"><?= $rating['avg'] ?> / 5 (<?= $rating['count'] ?> review<?= $rating['count'] > 1 ? 's' : '' ?>)</span></div>
             <?php else: ?>
                 <p class="text-muted mb-0">No reviews yet.</p>
             <?php endif; ?>
@@ -68,7 +58,7 @@ require_once '../includes/header.php';
         <div class="card mb-2">
             <div class="card-body">
                 <strong><?= htmlspecialchars($r['reviewer_name']) ?></strong>
-                — <?= render_stars($r['rating']) ?>
+                — <?= Review::renderStars($r['rating']) ?>
                 <p class="mb-0 mt-1"><?= htmlspecialchars($r['comment']) ?></p>
                 <small class="text-muted"><?= date('d M Y', strtotime($r['created_at'])) ?></small>
             </div>

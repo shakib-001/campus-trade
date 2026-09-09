@@ -1,13 +1,14 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
+require_once '../app/models/User.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$users = $pdo->query("SELECT * FROM users ORDER BY created_at DESC")->fetchAll();
+$users = User::all();
 
 $pageTitle = "Manage Users";
 require_once '../includes/header.php';

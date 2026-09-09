@@ -3,15 +3,14 @@ require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
 require_once '../includes/functions.php';
+require_once '../app/models/User.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
-$stmt->execute([$_SESSION['user_id']]);
-$user = $stmt->fetch();
+$user = User::findById($_SESSION['user_id']);
 
 $errors = [];
 
@@ -49,8 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $stmt = $pdo->prepare("UPDATE users SET name = ?, student_id = ?, phone = ?, profile_pic = ? WHERE user_id = ?");
-        $stmt->execute([$name, $student_id, $phone, $profilePic, $_SESSION['user_id']]);
+        User::updateProfile($_SESSION['user_id'], $name, $student_id, $phone, $profilePic);
 
         $_SESSION['name'] = $name; // keep navbar greeting in sync
         $_SESSION['success'] = "Profile updated successfully.";

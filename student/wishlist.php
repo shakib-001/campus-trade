@@ -1,23 +1,14 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
+require_once '../app/models/Wishlist.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$stmt = $pdo->prepare(
-    "SELECT products.*, categories.category_name, users.name AS seller_name
-     FROM wishlist
-     JOIN products ON wishlist.product_id = products.product_id
-     JOIN categories ON products.category_id = categories.category_id
-     JOIN users ON products.seller_id = users.user_id
-     WHERE wishlist.user_id = ?
-     ORDER BY wishlist.wishlist_id DESC"
-);
-$stmt->execute([$_SESSION['user_id']]);
-$items = $stmt->fetchAll();
+$items = Wishlist::findForUser($_SESSION['user_id']);
 
 $pageTitle = "My Wishlist";
 require_once '../includes/header.php';

@@ -2,6 +2,8 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/Product.php';
+require_once '../app/models/ProductRequest.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -14,9 +16,7 @@ if (!$product_id) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT * FROM products WHERE product_id = ?");
-$stmt->execute([$product_id]);
-$product = $stmt->fetch();
+$product = Product::findById($product_id);
 
 if (!$product || $product['status'] !== 'available') {
     header("Location: browse_items.php");
@@ -41,22 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Prevent duplicate pending requests from the same buyer for the same item
-    if (empty($errors)) {
-        $check = $pdo->prepare(
-            "SELECT request_id FROM requests WHERE product_id = ? AND buyer_id = ? AND status = 'pending'"
-        );
-        $check->execute([$product_id, $_SESSION['user_id']]);
-        if ($check->fetch()) {
-            $errors[] = "You already have a pending request for this item.";
-        }
+    if (empty($errors) && ProductRequest::hasPendingRequest($product_id, $_SESSION['user_id'])) {
+        $errors[] = "You already have a pending request for this item.";
     }
 
     if (empty($errors)) {
-        $stmt = $pdo->prepare(
-            "INSERT INTO requests (product_id, buyer_id, meetup_location, meetup_time, status)
-             VALUES (?, ?, ?, ?, 'pending')"
-        );
-        $stmt->execute([$product_id, $_SESSION['user_id'], $meetup_location, $meetup_time]);
+        ProductRequest::create($product_id, $_SESSION['user_id'], $meetup_location, $meetup_time);
 
         $_SESSION['success'] = "Request sent! The seller will review it.";
         header("Location: my_requests.php");

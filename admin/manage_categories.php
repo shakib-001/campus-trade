@@ -2,6 +2,7 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/Category.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../auth/login.php");
@@ -17,21 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_category'])) {
     if (empty($name)) {
         $errors[] = "Category name can't be empty.";
     } else {
-        $stmt = $pdo->prepare("INSERT INTO categories (category_name) VALUES (?)");
-        $stmt->execute([$name]);
+        Category::create($name);
         $_SESSION['success'] = "Category added.";
         header("Location: manage_categories.php");
         exit;
     }
 }
 
-$categories = $pdo->query(
-    "SELECT categories.*, COUNT(products.product_id) AS item_count
-     FROM categories
-     LEFT JOIN products ON categories.category_id = products.category_id
-     GROUP BY categories.category_id
-     ORDER BY categories.category_name"
-)->fetchAll();
+$categories = Category::allWithItemCounts();
 
 $pageTitle = "Manage Categories";
 require_once '../includes/header.php';

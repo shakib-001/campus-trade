@@ -3,6 +3,7 @@ require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
 require_once '../includes/functions.php';
+require_once '../app/models/User.php';
 
 $errors = [];
 
@@ -37,9 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Check if email already exists
     if (empty($errors)) {
-        $stmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        if ($stmt->fetch()) {
+        if (User::emailExists($email)) {
             $errors[] = "An account with this email already exists.";
         }
     }
@@ -47,10 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Insert new user
     if (empty($errors)) {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare(
-            "INSERT INTO users (name, student_id, email, phone, password, role) VALUES (?, ?, ?, ?, ?, 'student')"
-        );
-        $stmt->execute([$name, $student_id, $email, $phone, $hashedPassword]);
+        User::create($name, $student_id, $email, $phone, $hashedPassword);
 
         $_SESSION['success'] = "Registration successful! Please log in.";
         header("Location: login.php");

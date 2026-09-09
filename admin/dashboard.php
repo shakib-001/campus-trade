@@ -1,6 +1,9 @@
 <?php
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
+require_once '../app/models/User.php';
+require_once '../app/models/Product.php';
+require_once '../app/models/Report.php';
 
 // Access control: only logged-in admins can see this page
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -8,9 +11,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit;
 }
 
-$totalUsers = $pdo->query("SELECT COUNT(*) AS c FROM users WHERE role='student'")->fetch()['c'];
-$totalItems = $pdo->query("SELECT COUNT(*) AS c FROM products")->fetch()['c'];
-$pendingReports = $pdo->query("SELECT COUNT(*) AS c FROM reports WHERE status='pending'")->fetch()['c'];
+$totalUsers = User::countStudents();
+$totalItems = Product::countAll();
+$pendingReports = Report::pendingCount();
 
 $pageTitle = "Admin Dashboard";
 require_once '../includes/header.php';

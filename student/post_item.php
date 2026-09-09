@@ -2,6 +2,8 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/Category.php';
+require_once '../app/models/Product.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -9,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
 }
 
 $errors = [];
-$categories = $pdo->query("SELECT * FROM categories ORDER BY category_name")->fetchAll();
+$categories = Category::all();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
@@ -54,14 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $stmt = $pdo->prepare(
-            "INSERT INTO products (seller_id, category_id, title, description, price, item_condition, listing_type, image)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        );
-        $stmt->execute([
+        Product::create(
             $_SESSION['user_id'], $category_id, $title, $description,
             $price, $item_condition, $listing_type, $imageName
-        ]);
+        );
 
         $_SESSION['success'] = "Item posted successfully!";
         header("Location: my_listings.php");

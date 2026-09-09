@@ -2,6 +2,7 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/User.php';
 
 $token = $_GET['token'] ?? $_POST['token'] ?? null;
 $errors = [];
@@ -12,9 +13,7 @@ if (!$token) {
 }
 
 // Validate the token exists and hasn't expired
-$stmt = $pdo->prepare("SELECT * FROM users WHERE reset_token = ? AND reset_expires > NOW()");
-$stmt->execute([$token]);
-$user = $stmt->fetch();
+$user = User::findByValidResetToken($token);
 
 if (!$user) {
     $pageTitle = "Reset Password";
@@ -38,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
-        $pdo->prepare("UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE user_id = ?")
-            ->execute([$hashed, $user['user_id']]);
+        User::updatePassword($user['user_id'], $hashed);
+        User::clearResetToken($user['user_id']);
 
         $_SESSION['success'] = "Password reset successful! Please log in with your new password.";
         header("Location: login.php");

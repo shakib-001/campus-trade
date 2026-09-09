@@ -2,6 +2,9 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../app/models/User.php';
+require_once '../app/models/LoginAttempt.php';
+require_once '../app/models/RememberToken.php';
 
 $errors = [];
 
@@ -15,25 +18,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "Please enter both email and password.";
     } else {
         // Rate limiting: count failed attempts for this email in the last 15 minutes
-        $attemptStmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM login_attempts WHERE email = ? AND attempted_at > (NOW() - INTERVAL 15 MINUTE)"
-        );
-        $attemptStmt->execute([$email]);
-        $recentAttempts = $attemptStmt->fetchColumn();
+        $recentAttempts = LoginAttempt::recentCount($email, 15);
 
         if ($recentAttempts >= 5) {
             $errors[] = "Too many failed login attempts. Please try again in 15 minutes, or use Forgot Password.";
         } else {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch();
+            $user = User::findByEmail($email);
 
             if ($user && password_verify($password, $user['password'])) {
                 if ($user['status'] === 'blocked') {
                     $errors[] = "Your account has been blocked. Contact admin.";
                 } else {
                     // Login successful — clear this email's failed-attempt history
-                    $pdo->prepare("DELETE FROM login_attempts WHERE email = ?")->execute([$email]);
+                    LoginAttempt::clear($email);
 
                     $_SESSION['user_id'] = $user['user_id'];
                     $_SESSION['name'] = $user['name'];
@@ -45,9 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $validator = bin2hex(random_bytes(32));
                         $expires = date('Y-m-d H:i:s', strtotime('+30 days'));
 
-                        $pdo->prepare(
-                            "INSERT INTO remember_tokens (user_id, selector, hashed_validator, expires_at) VALUES (?, ?, ?, ?)"
-                        )->execute([$user['user_id'], $selector, hash('sha256', $validator), $expires]);
+                        RememberToken::create($user['user_id'], $selector, hash('sha256', $validator), $expires);
 
                         $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
                         setcookie('remember_token', $selector . ':' . $validator, [
@@ -65,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } else {
                 // Log the failed attempt so it counts toward the rate limit
-                $pdo->prepare("INSERT INTO login_attempts (email, ip_address) VALUES (?, ?)")->execute([$email, $ip]);
+                LoginAttempt::log($email, $ip);
                 $errors[] = "Invalid email or password.";
             }
         }
