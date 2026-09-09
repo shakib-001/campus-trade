@@ -32,7 +32,7 @@ require_once '../includes/header.php';
 <div class="card shadow-sm mt-3">
     <div class="card-body d-flex align-items-center gap-3">
         <?php if ($user['profile_pic']): ?>
-            <img src="../assets/uploads/<?= htmlspecialchars($user['profile_pic']) ?>" class="avatar-lg">
+            <img src="../assets/uploads/<?= htmlspecialchars($user['profile_pic']) ?>" class="avatar-lg" alt="<?= htmlspecialchars($user['name']) ?>'s profile picture">
         <?php else: ?>
             <div class="avatar-placeholder"><?= strtoupper(substr($user['name'], 0, 1)) ?></div>
         <?php endif; ?>

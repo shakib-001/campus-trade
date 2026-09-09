@@ -28,7 +28,7 @@ require_once '../includes/header.php';
         <div class="row align-items-center">
             <div class="col-auto">
                 <?php if ($user['profile_pic']): ?>
-                    <img src="../assets/uploads/<?= htmlspecialchars($user['profile_pic']) ?>" class="avatar-lg">
+                    <img src="../assets/uploads/<?= htmlspecialchars($user['profile_pic']) ?>" class="avatar-lg" alt="<?= htmlspecialchars($user['name']) ?>'s profile picture">
                 <?php else: ?>
                     <div class="avatar-placeholder"><?= strtoupper(substr($user['name'], 0, 1)) ?></div>
                 <?php endif; ?>

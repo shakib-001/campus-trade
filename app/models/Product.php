@@ -22,8 +22,8 @@ class Product {
         return $stmt->fetch();
     }
 
-    /** Available listings, optionally filtered by category/keyword, paginated. */
-    public static function findAvailable($categoryId = '', $keyword = '', $perPage = 9, $page = 1) {
+    /** Available listings, optionally filtered by category/keyword, sorted, paginated. */
+    public static function findAvailable($categoryId = '', $keyword = '', $perPage = 9, $page = 1, $sort = 'newest') {
         $sql = "SELECT products.*, categories.category_name, users.name AS seller_name
                 FROM products
                 JOIN categories ON products.category_id = categories.category_id
@@ -39,7 +39,15 @@ class Product {
             $sql .= " AND products.title LIKE ?";
             $params[] = "%$keyword%";
         }
-        $sql .= " ORDER BY products.posted_at DESC";
+
+        if ($sort === 'price_low') {
+            $orderBy = "products.price ASC";
+        } elseif ($sort === 'price_high') {
+            $orderBy = "products.price DESC";
+        } else {
+            $orderBy = "products.posted_at DESC"; // 'newest' (default)
+        }
+        $sql .= " ORDER BY $orderBy";
 
         $offset = (max(1, $page) - 1) * $perPage;
         $sql .= " LIMIT $perPage OFFSET $offset";

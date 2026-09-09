@@ -80,9 +80,9 @@ require_once '../includes/header.php';
 
                     <div class="mb-3 text-center">
                         <?php if ($user['profile_pic']): ?>
-                            <img id="avatarPreview" src="../assets/uploads/<?= htmlspecialchars($user['profile_pic']) ?>" class="avatar-lg">
+                            <img id="avatarPreview" src="../assets/uploads/<?= htmlspecialchars($user['profile_pic']) ?>" class="avatar-lg" alt="Your profile picture">
                         <?php else: ?>
-                            <img id="avatarPreview" class="avatar-lg d-none">
+                            <img id="avatarPreview" class="avatar-lg d-none" alt="Preview">
                             <div id="avatarPlaceholder" class="avatar-placeholder mx-auto"><?= strtoupper(substr($user['name'], 0, 1)) ?></div>
                         <?php endif; ?>
                     </div>

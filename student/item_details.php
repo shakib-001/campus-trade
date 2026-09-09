@@ -49,7 +49,7 @@ require_once '../includes/header.php';
 <div class="row mt-3">
     <div class="col-md-6">
         <?php if ($product['image']): ?>
-            <img src="../assets/uploads/<?= htmlspecialchars($product['image']) ?>" class="img-fluid rounded shadow-sm">
+            <img src="../assets/uploads/<?= htmlspecialchars($product['image']) ?>" class="img-fluid rounded shadow-sm" alt="<?= htmlspecialchars($product['title']) ?>">
         <?php else: ?>
             <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height:300px;">
                 <span class="text-muted">No Image</span>

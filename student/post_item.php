@@ -92,7 +92,7 @@ require_once '../includes/header.php';
                     <div class="mb-3">
                         <label class="form-label">Item Image (optional)</label>
                         <input type="file" name="image" id="imageInput" class="form-control" accept="image/*">
-                        <img id="imagePreview" class="mt-2 rounded d-none" style="max-height:180px;">
+                        <img id="imagePreview" class="mt-2 rounded d-none" alt="Preview" style="max-height:180px;">
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100">Post Item</button>

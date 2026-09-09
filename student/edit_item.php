@@ -111,9 +111,9 @@ require_once '../includes/header.php';
                         <label class="form-label">Replace Image (optional)</label>
                         <input type="file" name="image" id="imageInput" class="form-control" accept="image/*">
                         <?php if ($product['image']): ?>
-                            <img id="imagePreview" class="mt-2 rounded" src="../assets/uploads/<?= htmlspecialchars($product['image']) ?>" style="max-height:180px;">
+                            <img id="imagePreview" class="mt-2 rounded" src="../assets/uploads/<?= htmlspecialchars($product['image']) ?>" alt="<?= htmlspecialchars($product['title']) ?>" style="max-height:180px;">
                         <?php else: ?>
-                            <img id="imagePreview" class="mt-2 rounded d-none" style="max-height:180px;">
+                            <img id="imagePreview" class="mt-2 rounded d-none" alt="Preview" style="max-height:180px;">
                         <?php endif; ?>
                     </div>
 

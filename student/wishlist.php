@@ -28,7 +28,7 @@ require_once '../includes/header.php';
         <div class="col-md-4 mb-4">
             <div class="card h-100 shadow-sm">
                 <?php if ($product['image']): ?>
-                    <img src="../assets/uploads/<?= htmlspecialchars($product['image']) ?>" class="card-img-top" style="height:180px; object-fit:cover;">
+                    <img src="../assets/uploads/<?= htmlspecialchars($product['image']) ?>" class="card-img-top" alt="<?= htmlspecialchars($product['title']) ?>" style="height:180px; object-fit:cover;">
                 <?php else: ?>
                     <div class="bg-light d-flex align-items-center justify-content-center" style="height:180px;">
                         <span class="text-muted">No Image</span>

@@ -16,13 +16,17 @@ $categories = Category::all();
 
 $category_id = $_GET['category_id'] ?? '';
 $keyword = trim($_GET['keyword'] ?? '');
+$sort = $_GET['sort'] ?? 'newest';
+if (!in_array($sort, ['newest', 'price_low', 'price_high'])) {
+    $sort = 'newest';
+}
 
 $perPage = 9;
 $page = max(1, (int) ($_GET['page'] ?? 1));
 
 $totalItems = Product::countAvailable($category_id, $keyword);
 $totalPages = max(1, ceil($totalItems / $perPage));
-$products = Product::findAvailable($category_id, $keyword, $perPage, $page);
+$products = Product::findAvailable($category_id, $keyword, $perPage, $page, $sort);
 
 // This user's wishlisted product IDs, so we can show filled/empty heart icons
 $wishlistedIds = Wishlist::productIdsForUser($_SESSION['user_id']);
@@ -48,6 +52,13 @@ require_once '../includes/header.php';
         <input type="text" name="keyword" class="form-control" placeholder="Search by title..." value="<?= htmlspecialchars($keyword) ?>">
     </div>
     <div class="col-md-3">
+        <select name="sort" class="form-select">
+            <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
+            <option value="price_low" <?= $sort === 'price_low' ? 'selected' : '' ?>>Price: Low to High</option>
+            <option value="price_high" <?= $sort === 'price_high' ? 'selected' : '' ?>>Price: High to Low</option>
+        </select>
+    </div>
+    <div class="col-md-12">
         <button type="submit" class="btn btn-primary w-100">Search</button>
     </div>
 </form>
@@ -64,7 +75,7 @@ require_once '../includes/header.php';
         <div class="col-md-4 mb-4">
             <div class="card h-100 shadow-sm">
                 <?php if ($product['image']): ?>
-                    <img src="../assets/uploads/<?= htmlspecialchars($product['image']) ?>" class="card-img-top" style="height:180px; object-fit:cover;">
+                    <img src="../assets/uploads/<?= htmlspecialchars($product['image']) ?>" class="card-img-top" alt="<?= htmlspecialchars($product['title']) ?>" style="height:180px; object-fit:cover;">
                 <?php else: ?>
                     <div class="bg-light d-flex align-items-center justify-content-center" style="height:180px;">
                         <span class="text-muted">No Image</span>
@@ -102,7 +113,7 @@ require_once '../includes/header.php';
         <ul class="pagination justify-content-center">
             <?php for ($p = 1; $p <= $totalPages; $p++): ?>
                 <li class="page-item <?= $p == $page ? 'active' : '' ?>">
-                    <a class="page-link" href="browse_items.php?page=<?= $p ?>&category_id=<?= urlencode($category_id) ?>&keyword=<?= urlencode($keyword) ?>">
+                    <a class="page-link" href="browse_items.php?page=<?= $p ?>&category_id=<?= urlencode($category_id) ?>&keyword=<?= urlencode($keyword) ?>&sort=<?= urlencode($sort) ?>">
                         <?= $p ?>
                     </a>
                 </li>

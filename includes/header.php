@@ -59,7 +59,7 @@
                     <div class="dropdown">
                         <a class="d-flex align-items-center text-light dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <?php if ($navAvatarPic): ?>
-                                <img src="/campus-trade/assets/uploads/<?= htmlspecialchars($navAvatarPic) ?>" class="avatar me-2">
+                                <img src="/campus-trade/assets/uploads/<?= htmlspecialchars($navAvatarPic) ?>" class="avatar me-2" alt="Your profile picture">
                             <?php else: ?>
                                 <span class="avatar-placeholder me-2" style="width:32px;height:32px;font-size:1rem;"><?= strtoupper(substr($_SESSION['name'], 0, 1)) ?></span>
                             <?php endif; ?>
