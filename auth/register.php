@@ -2,56 +2,20 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
-require_once '../includes/functions.php';
-require_once '../app/models/User.php';
+require_once '../app/controllers/AuthController.php';
 
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
-    $name = trim($_POST['name']);
-    $student_id = trim($_POST['student_id']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $password = $_POST['password'];
-    $confirm_password = $_POST['confirm_password'];
+    $result = AuthController::register($_POST);
 
-    // Basic server-side validation
-    if (empty($name) || empty($email) || empty($password)) {
-        $errors[] = "Name, email, and password are required.";
-    }
-    if (strlen($name) > 100 || strlen($email) > 100 || strlen($student_id) > 20 || strlen($phone) > 20) {
-        $errors[] = "One of the fields is too long. Please shorten it.";
-    }
-    if (!empty($phone) && !is_valid_bd_phone($phone)) {
-        $errors[] = "Phone number must be exactly 11 digits and start with 01 (e.g. 01712345678).";
-    }
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "Please enter a valid email address.";
-    }
-    if (strlen($password) < 6) {
-        $errors[] = "Password must be at least 6 characters.";
-    }
-    if ($password !== $confirm_password) {
-        $errors[] = "Passwords do not match.";
-    }
-
-    // Check if email already exists
-    if (empty($errors)) {
-        if (User::emailExists($email)) {
-            $errors[] = "An account with this email already exists.";
-        }
-    }
-
-    // Insert new user
-    if (empty($errors)) {
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        User::create($name, $student_id, $email, $phone, $hashedPassword);
-
-        $_SESSION['success'] = "Registration successful! Please log in.";
-        header("Location: login.php");
+    if ($result['success']) {
+        $_SESSION['success'] = $result['flash'];
+        header("Location: " . $result['redirect']);
         exit;
     }
+    $errors = $result['errors'];
 }
 
 $pageTitle = "Register";

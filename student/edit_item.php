@@ -4,6 +4,7 @@ require_once '../config/db.php';
 require_once '../config/csrf.php';
 require_once '../app/models/Product.php';
 require_once '../app/models/Category.php';
+require_once '../app/controllers/ProductController.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -29,40 +30,14 @@ $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
-    $title = trim($_POST['title']);
-    $category_id = $_POST['category_id'];
-    $description = trim($_POST['description']);
-    $price = $_POST['price'];
-    $item_condition = $_POST['item_condition'];
-    $listing_type = $_POST['listing_type'];
-    $imageName = $product['image']; // keep existing image unless a new one is uploaded
+    $result = ProductController::update($id, $product, $_POST, $_FILES['image'] ?? null, '../assets/uploads');
 
-    if (empty($title) || empty($category_id) || empty($price)) {
-        $errors[] = "Title, category, and price are required.";
-    }
-
-    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!in_array($_FILES['image']['type'], $allowedTypes)) {
-            $errors[] = "Only JPG, PNG, or WEBP images are allowed.";
-        } else {
-            // Delete old image if it exists
-            if ($product['image'] && file_exists('../assets/uploads/' . $product['image'])) {
-                unlink('../assets/uploads/' . $product['image']);
-            }
-            $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
-            $imageName = uniqid('item_', true) . '.' . $ext;
-            move_uploaded_file($_FILES['image']['tmp_name'], '../assets/uploads/' . $imageName);
-        }
-    }
-
-    if (empty($errors)) {
-        Product::update($id, $title, $category_id, $description, $price, $item_condition, $listing_type, $imageName);
-
-        $_SESSION['success'] = "Item updated successfully!";
-        header("Location: my_listings.php");
+    if ($result['success']) {
+        $_SESSION['success'] = $result['flash'];
+        header("Location: " . $result['redirect']);
         exit;
     }
+    $errors = $result['errors'];
 }
 
 $pageTitle = "Edit Item";

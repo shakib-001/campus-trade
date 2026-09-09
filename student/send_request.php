@@ -3,7 +3,7 @@ require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
 require_once '../app/models/Product.php';
-require_once '../app/models/ProductRequest.php';
+require_once '../app/controllers/RequestController.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -33,25 +33,14 @@ $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
-    $meetup_location = trim($_POST['meetup_location']);
-    $meetup_time = $_POST['meetup_time'];
+    $result = RequestController::send($product_id, $_SESSION['user_id'], $_POST['meetup_location'] ?? '', $_POST['meetup_time'] ?? '');
 
-    if (empty($meetup_location) || empty($meetup_time)) {
-        $errors[] = "Please provide both a meetup location and time.";
-    }
-
-    // Prevent duplicate pending requests from the same buyer for the same item
-    if (empty($errors) && ProductRequest::hasPendingRequest($product_id, $_SESSION['user_id'])) {
-        $errors[] = "You already have a pending request for this item.";
-    }
-
-    if (empty($errors)) {
-        ProductRequest::create($product_id, $_SESSION['user_id'], $meetup_location, $meetup_time);
-
-        $_SESSION['success'] = "Request sent! The seller will review it.";
-        header("Location: my_requests.php");
+    if ($result['success']) {
+        $_SESSION['success'] = $result['flash'];
+        header("Location: " . $result['redirect']);
         exit;
     }
+    $errors = $result['errors'];
 }
 
 $pageTitle = "Send Request";

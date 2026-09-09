@@ -3,7 +3,7 @@ require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
 require_once '../app/models/Category.php';
-require_once '../app/models/Product.php';
+require_once '../app/controllers/ProductController.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
     header("Location: ../auth/login.php");
@@ -15,56 +15,14 @@ $categories = Category::all();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
-    $title = trim($_POST['title']);
-    $category_id = $_POST['category_id'];
-    $description = trim($_POST['description']);
-    $price = $_POST['price'];
-    $item_condition = $_POST['item_condition'];
-    $listing_type = $_POST['listing_type'];
-    $imageName = null;
+    $result = ProductController::create($_SESSION['user_id'], $_POST, $_FILES['image'] ?? null, '../assets/uploads');
 
-    // Basic validation
-    if (empty($title) || empty($category_id) || empty($price)) {
-        $errors[] = "Title, category, and price are required.";
-    }
-    if (strlen($title) > 150) {
-        $errors[] = "Title must be under 150 characters.";
-    }
-    if (!is_numeric($price) || $price < 0) {
-        $errors[] = "Please enter a valid price.";
-    }
-
-    // Handle image upload (optional)
-    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        $fileType = $_FILES['image']['type'];
-        $fileSize = $_FILES['image']['size'];
-
-        if (!in_array($fileType, $allowedTypes)) {
-            $errors[] = "Only JPG, PNG, or WEBP images are allowed.";
-        } elseif ($fileSize > 5 * 1024 * 1024) { // 5MB limit
-            $errors[] = "Image must be under 5MB.";
-        } else {
-            $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
-            $imageName = uniqid('item_', true) . '.' . $ext;
-            $uploadPath = '../assets/uploads/' . $imageName;
-            if (!move_uploaded_file($_FILES['image']['tmp_name'], $uploadPath)) {
-                $errors[] = "Failed to upload image. Please try again.";
-                $imageName = null;
-            }
-        }
-    }
-
-    if (empty($errors)) {
-        Product::create(
-            $_SESSION['user_id'], $category_id, $title, $description,
-            $price, $item_condition, $listing_type, $imageName
-        );
-
-        $_SESSION['success'] = "Item posted successfully!";
-        header("Location: my_listings.php");
+    if ($result['success']) {
+        $_SESSION['success'] = $result['flash'];
+        header("Location: " . $result['redirect']);
         exit;
     }
+    $errors = $result['errors'];
 }
 
 $pageTitle = "Post an Item";

@@ -2,69 +2,33 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
-require_once '../app/models/User.php';
-require_once '../app/models/LoginAttempt.php';
-require_once '../app/models/RememberToken.php';
+require_once '../app/controllers/AuthController.php';
 
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-    $ip = $_SERVER['REMOTE_ADDR'];
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $result = AuthController::login(
+        $_POST['email'] ?? '', $_POST['password'] ?? '',
+        $_SERVER['REMOTE_ADDR'], !empty($_POST['remember_me']), $isHttps
+    );
 
-    if (empty($email) || empty($password)) {
-        $errors[] = "Please enter both email and password.";
-    } else {
-        // Rate limiting: count failed attempts for this email in the last 15 minutes
-        $recentAttempts = LoginAttempt::recentCount($email, 15);
+    if ($result['success']) {
+        $user = $result['user'];
+        $_SESSION['user_id'] = $user['user_id'];
+        $_SESSION['name'] = $user['name'];
+        $_SESSION['role'] = $user['role'];
+        $_SESSION['last_activity'] = time();
 
-        if ($recentAttempts >= 5) {
-            $errors[] = "Too many failed login attempts. Please try again in 15 minutes, or use Forgot Password.";
-        } else {
-            $user = User::findByEmail($email);
-
-            if ($user && password_verify($password, $user['password'])) {
-                if ($user['status'] === 'blocked') {
-                    $errors[] = "Your account has been blocked. Contact admin.";
-                } else {
-                    // Login successful — clear this email's failed-attempt history
-                    LoginAttempt::clear($email);
-
-                    $_SESSION['user_id'] = $user['user_id'];
-                    $_SESSION['name'] = $user['name'];
-                    $_SESSION['role'] = $user['role'];
-                    $_SESSION['last_activity'] = time();
-
-                    if (!empty($_POST['remember_me'])) {
-                        $selector = bin2hex(random_bytes(12));
-                        $validator = bin2hex(random_bytes(32));
-                        $expires = date('Y-m-d H:i:s', strtotime('+30 days'));
-
-                        RememberToken::create($user['user_id'], $selector, hash('sha256', $validator), $expires);
-
-                        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-                        setcookie('remember_token', $selector . ':' . $validator, [
-                            'expires' => strtotime('+30 days'),
-                            'path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => $isHttps,
-                        ]);
-                    }
-
-                    if ($user['role'] === 'admin') {
-                        header("Location: ../admin/dashboard.php");
-                    } else {
-                        header("Location: ../student/dashboard.php");
-                    }
-                    exit;
-                }
-            } else {
-                // Log the failed attempt so it counts toward the rate limit
-                LoginAttempt::log($email, $ip);
-                $errors[] = "Invalid email or password.";
-            }
+        if (isset($result['remember_cookie'])) {
+            setcookie('remember_token', $result['remember_cookie']['value'], $result['remember_cookie']['options']);
         }
+
+        header("Location: " . $result['redirect']);
+        exit;
     }
+    $errors = $result['errors'];
 }
 
 $pageTitle = "Login";
