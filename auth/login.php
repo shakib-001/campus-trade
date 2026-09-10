@@ -29,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     $errors = $result['errors'];
+    $unverifiedEmail = $result['unverified_email'] ?? null;
 }
 
 $pageTitle = "Login";
@@ -53,6 +54,9 @@ require_once '../includes/header.php';
                                 <li><?= htmlspecialchars($error) ?></li>
                             <?php endforeach; ?>
                         </ul>
+                        <?php if (!empty($unverifiedEmail)): ?>
+                            <a href="resend_verification.php?email=<?= urlencode($unverifiedEmail) ?>" class="btn btn-sm btn-outline-danger mt-2">Verify Now</a>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
 

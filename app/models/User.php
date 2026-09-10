@@ -28,7 +28,7 @@ class User {
 
     public static function create($name, $studentId, $email, $phone, $hashedPassword) {
         $stmt = self::db()->prepare(
-            "INSERT INTO users (name, student_id, email, phone, password, role) VALUES (?, ?, ?, ?, ?, 'student')"
+            "INSERT INTO users (name, student_id, email, phone, password, role, email_verified) VALUES (?, ?, ?, ?, ?, 'student', 0)"
         );
         $stmt->execute([$name, $studentId, $email, $phone, $hashedPassword]);
         return self::db()->lastInsertId();
@@ -72,22 +72,40 @@ class User {
         ];
     }
 
-    // --- Password reset (forgot-password flow) ---
+    // --- Email verification (registration) ---
 
-    public static function setResetToken($userId, $token, $expiresAt) {
-        $stmt = self::db()->prepare("UPDATE users SET reset_token = ?, reset_expires = ? WHERE user_id = ?");
-        $stmt->execute([$token, $expiresAt, $userId]);
+    public static function setVerificationCode($userId, $codeHash, $expiresAt) {
+        self::db()->prepare(
+            "UPDATE users SET verify_code_hash = ?, verify_expires = ?, verify_attempts = 0 WHERE user_id = ?"
+        )->execute([$codeHash, $expiresAt, $userId]);
     }
 
-    public static function findByValidResetToken($token) {
-        $stmt = self::db()->prepare("SELECT * FROM users WHERE reset_token = ? AND reset_expires > NOW()");
-        $stmt->execute([$token]);
-        return $stmt->fetch();
+    public static function incrementVerifyAttempts($userId) {
+        self::db()->prepare("UPDATE users SET verify_attempts = verify_attempts + 1 WHERE user_id = ?")->execute([$userId]);
     }
 
-    public static function clearResetToken($userId) {
-        self::db()->prepare("UPDATE users SET reset_token = NULL, reset_expires = NULL WHERE user_id = ?")
-            ->execute([$userId]);
+    public static function markEmailVerified($userId) {
+        self::db()->prepare(
+            "UPDATE users SET email_verified = 1, verify_code_hash = NULL, verify_expires = NULL, verify_attempts = 0 WHERE user_id = ?"
+        )->execute([$userId]);
+    }
+
+    // --- Password reset (forgot-password flow, also OTP-based) ---
+
+    public static function setResetCode($userId, $codeHash, $expiresAt) {
+        self::db()->prepare(
+            "UPDATE users SET reset_token = ?, reset_expires = ?, reset_attempts = 0 WHERE user_id = ?"
+        )->execute([$codeHash, $expiresAt, $userId]);
+    }
+
+    public static function incrementResetAttempts($userId) {
+        self::db()->prepare("UPDATE users SET reset_attempts = reset_attempts + 1 WHERE user_id = ?")->execute([$userId]);
+    }
+
+    public static function clearResetCode($userId) {
+        self::db()->prepare(
+            "UPDATE users SET reset_token = NULL, reset_expires = NULL, reset_attempts = 0 WHERE user_id = ?"
+        )->execute([$userId]);
     }
 }
 ?>

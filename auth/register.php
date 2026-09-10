@@ -2,6 +2,7 @@
 require_once '../includes/session_init.php';
 require_once '../config/db.php';
 require_once '../config/csrf.php';
+require_once '../includes/functions.php';
 require_once '../app/controllers/AuthController.php';
 
 $errors = [];
@@ -11,7 +12,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = AuthController::register($_POST);
 
     if ($result['success']) {
-        $_SESSION['success'] = $result['flash'];
+        $mailResult = send_app_email(
+            $result['email'], $result['name'],
+            'Verify your Campus Trade account',
+            "<p>Hi {$result['name']},</p>
+             <p>Your Campus Trade verification code is:</p>
+             <h2 style=\"letter-spacing:4px;\">{$result['code']}</h2>
+             <p>This code expires in 10 minutes.</p>"
+        );
+
+        $_SESSION['pending_email'] = $result['email'];
+        if (!$mailResult['sent']) {
+            $_SESSION['dev_otp'] = $result['code']; // shown on screen only if email isn't configured/failed
+        }
         header("Location: " . $result['redirect']);
         exit;
     }

@@ -11,8 +11,13 @@ CREATE TABLE users (
   profile_pic VARCHAR(255),
   role ENUM('admin','student') DEFAULT 'student',
   status ENUM('active','blocked') DEFAULT 'active',
-  reset_token VARCHAR(64) NULL,
+  email_verified TINYINT(1) NOT NULL DEFAULT 1,
+  verify_code_hash VARCHAR(255) NULL,
+  verify_expires DATETIME NULL,
+  verify_attempts INT NOT NULL DEFAULT 0,
+  reset_token VARCHAR(255) NULL,
   reset_expires DATETIME NULL,
+  reset_attempts INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

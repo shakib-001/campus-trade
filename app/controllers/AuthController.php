@@ -7,18 +7,24 @@ require_once __DIR__ . '/../../includes/functions.php';
 /**
  * app/controllers/AuthController.php
  *
- * Holds the actual business logic for registration and login — validation,
- * calling the right Models, and deciding what should happen next. The page
- * files (auth/register.php, auth/login.php) stay as thin wrappers: they
- * collect $_POST data, call these methods, and render the view (HTML) with
- * whatever result comes back. This keeps URLs and page structure unchanged
- * while still giving the app a real Controller layer.
+ * Business logic for registration (with email verification), login, and
+ * password reset — all using 6-digit OTP codes instead of email links,
+ * since that's a much more familiar, mobile-friendly flow for real users.
  *
- * Every method returns an array shaped like:
- *   ['success' => true,  'redirect' => '...', 'flash' => '...']
- *   ['success' => false, 'errors' => ['...', '...']]
+ * The page files (auth/*.php) stay thin: they collect input, call these
+ * methods, send the actual email (using SimpleMailer) when a code needs
+ * emailing, and render the view based on the result returned here.
+ *
+ * Every method returns a result array shaped roughly like:
+ *   ['success' => true,  'redirect' => '...', 'flash' => '...', ...]
+ *   ['success' => false, 'errors' => ['...', '...'], ...]
  */
 class AuthController {
+
+    const CODE_EXPIRY_MINUTES = 10;
+    const MAX_CODE_ATTEMPTS = 5;
+
+    // ---------------- Registration + email verification ----------------
 
     public static function register($data) {
         $name = trim($data['name'] ?? '');
@@ -48,7 +54,6 @@ class AuthController {
         if ($password !== $confirm_password) {
             $errors[] = "Passwords do not match.";
         }
-
         if (empty($errors) && User::emailExists($email)) {
             $errors[] = "An account with this email already exists.";
         }
@@ -58,17 +63,60 @@ class AuthController {
         }
 
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        User::create($name, $student_id, $email, $phone, $hashedPassword);
+        $userId = User::create($name, $student_id, $email, $phone, $hashedPassword);
 
-        return ['success' => true, 'redirect' => 'login.php', 'flash' => 'Registration successful! Please log in.'];
+        $code = generate_otp_code();
+        $expires = date('Y-m-d H:i:s', strtotime('+' . self::CODE_EXPIRY_MINUTES . ' minutes'));
+        User::setVerificationCode($userId, hash('sha256', $code), $expires);
+
+        return [
+            'success' => true,
+            'redirect' => 'verify_email.php',
+            'email' => $email,
+            'name' => $name,
+            'code' => $code, // the page uses this to send the actual email
+        ];
     }
 
-    /**
-     * Handles the full login flow: rate limiting, credential check, session
-     * setup, and (optionally) creating a "Remember Me" token/cookie.
-     * $isHttps is passed in so this stays a plain PHP class with no direct
-     * dependency on superglobals beyond what's given to it.
-     */
+    /** Verifies a submitted 6-digit code against the stored hash for this email. */
+    public static function verifyEmailCode($email, $code) {
+        $user = User::findByEmail($email);
+
+        if (!$user || $user['email_verified']) {
+            return ['success' => false, 'errors' => ["Invalid request."]];
+        }
+        if ($user['verify_attempts'] >= self::MAX_CODE_ATTEMPTS) {
+            return ['success' => false, 'errors' => ["Too many incorrect attempts. Please request a new code."], 'locked' => true];
+        }
+        if (empty($user['verify_code_hash']) || strtotime($user['verify_expires']) < time()) {
+            return ['success' => false, 'errors' => ["This code has expired. Please request a new one."], 'expired' => true];
+        }
+        if (!hash_equals($user['verify_code_hash'], hash('sha256', trim($code)))) {
+            User::incrementVerifyAttempts($user['user_id']);
+            $remaining = self::MAX_CODE_ATTEMPTS - ($user['verify_attempts'] + 1);
+            return ['success' => false, 'errors' => ["Incorrect code. $remaining attempt(s) remaining."]];
+        }
+
+        User::markEmailVerified($user['user_id']);
+        return ['success' => true, 'redirect' => 'login.php', 'flash' => 'Email verified! You can now log in.'];
+    }
+
+    /** Generates and returns a fresh code for an unverified account (e.g. the first one expired). */
+    public static function resendVerificationCode($email) {
+        $user = User::findByEmail($email);
+        if (!$user || $user['email_verified']) {
+            return ['success' => false, 'errors' => ["Invalid request."]];
+        }
+
+        $code = generate_otp_code();
+        $expires = date('Y-m-d H:i:s', strtotime('+' . self::CODE_EXPIRY_MINUTES . ' minutes'));
+        User::setVerificationCode($user['user_id'], hash('sha256', $code), $expires);
+
+        return ['success' => true, 'email' => $email, 'name' => $user['name'], 'code' => $code];
+    }
+
+    // ---------------- Login ----------------
+
     public static function login($email, $password, $ip, $rememberMe, $isHttps) {
         $email = trim($email);
 
@@ -91,6 +139,10 @@ class AuthController {
 
         if ($user['status'] === 'blocked') {
             return ['success' => false, 'errors' => ["Your account has been blocked. Contact admin."]];
+        }
+
+        if (!$user['email_verified']) {
+            return ['success' => false, 'errors' => ["Please verify your email before logging in."], 'unverified_email' => $email];
         }
 
         LoginAttempt::clear($email);
@@ -118,6 +170,60 @@ class AuthController {
         }
 
         return $result;
+    }
+
+    // ---------------- Forgot / reset password (also OTP-based) ----------------
+
+    public static function requestPasswordReset($email) {
+        $email = trim($email);
+        $user = User::findByEmail($email);
+
+        // Don't reveal whether the email exists — caller always shows the same message,
+        // but only actually generates/emails a code when the account is real.
+        if (!$user) {
+            return ['success' => true, 'exists' => false];
+        }
+
+        $code = generate_otp_code();
+        $expires = date('Y-m-d H:i:s', strtotime('+' . self::CODE_EXPIRY_MINUTES . ' minutes'));
+        User::setResetCode($user['user_id'], hash('sha256', $code), $expires);
+
+        return ['success' => true, 'exists' => true, 'email' => $email, 'name' => $user['name'], 'code' => $code];
+    }
+
+    public static function resetPasswordWithCode($email, $code, $newPassword, $confirm) {
+        $user = User::findByEmail(trim($email));
+
+        if (!$user || empty($user['reset_token'])) {
+            return ['success' => false, 'errors' => ["Invalid or expired request. Please start over."], 'restart' => true];
+        }
+        if ($user['reset_attempts'] >= self::MAX_CODE_ATTEMPTS) {
+            return ['success' => false, 'errors' => ["Too many incorrect attempts. Please request a new code."], 'restart' => true];
+        }
+        if (strtotime($user['reset_expires']) < time()) {
+            return ['success' => false, 'errors' => ["This code has expired. Please request a new one."], 'restart' => true];
+        }
+        if (!hash_equals($user['reset_token'], hash('sha256', trim($code)))) {
+            User::incrementResetAttempts($user['user_id']);
+            $remaining = self::MAX_CODE_ATTEMPTS - ($user['reset_attempts'] + 1);
+            return ['success' => false, 'errors' => ["Incorrect code. $remaining attempt(s) remaining."]];
+        }
+
+        $errors = [];
+        if (strlen($newPassword) < 6) {
+            $errors[] = "Password must be at least 6 characters.";
+        }
+        if ($newPassword !== $confirm) {
+            $errors[] = "Passwords do not match.";
+        }
+        if (!empty($errors)) {
+            return ['success' => false, 'errors' => $errors];
+        }
+
+        User::updatePassword($user['user_id'], password_hash($newPassword, PASSWORD_DEFAULT));
+        User::clearResetCode($user['user_id']);
+
+        return ['success' => true, 'redirect' => 'login.php', 'flash' => 'Password reset successful! Please log in with your new password.'];
     }
 }
 ?>

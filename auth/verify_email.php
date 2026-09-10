@@ -5,9 +5,9 @@ require_once '../config/csrf.php';
 require_once '../includes/functions.php';
 require_once '../app/controllers/AuthController.php';
 
-$email = $_SESSION['reset_email'] ?? null;
+$email = $_SESSION['pending_email'] ?? $_POST['email'] ?? null;
 if (!$email) {
-    header("Location: forgot_password.php");
+    header("Location: register.php");
     exit;
 }
 
@@ -17,13 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
 
     if (isset($_POST['resend'])) {
-        $result = AuthController::requestPasswordReset($email);
-        if ($result['exists']) {
+        $result = AuthController::resendVerificationCode($email);
+        if ($result['success']) {
             $mailResult = send_app_email(
                 $result['email'], $result['name'],
-                'Your new Campus Trade password reset code',
+                'Your new Campus Trade verification code',
                 "<p>Hi {$result['name']},</p>
-                 <p>Your new Campus Trade password reset code is:</p>
+                 <p>Your new Campus Trade verification code is:</p>
                  <h2 style=\"letter-spacing:4px;\">{$result['code']}</h2>
                  <p>This code expires in 10 minutes.</p>"
             );
@@ -31,33 +31,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$mailResult['sent']) {
                 $_SESSION['dev_otp'] = $result['code'];
             }
+            $_SESSION['success'] = "A new code has been sent.";
         }
-        $_SESSION['success'] = "A new code has been sent.";
-        header("Location: reset_password.php");
+        header("Location: verify_email.php");
         exit;
     }
 
     $code = trim($_POST['code'] ?? '');
-    $newPassword = $_POST['new_password'] ?? '';
-    $confirm = $_POST['confirm_password'] ?? '';
-
-    $result = AuthController::resetPasswordWithCode($email, $code, $newPassword, $confirm);
+    $result = AuthController::verifyEmailCode($email, $code);
 
     if ($result['success']) {
-        unset($_SESSION['reset_email'], $_SESSION['dev_otp']);
+        unset($_SESSION['pending_email'], $_SESSION['dev_otp']);
         $_SESSION['success'] = $result['flash'];
         header("Location: " . $result['redirect']);
         exit;
     }
     $errors = $result['errors'];
-    if (!empty($result['restart'])) {
-        unset($_SESSION['reset_email']);
-    }
 }
 
 $devOtp = $_SESSION['dev_otp'] ?? null;
 
-$pageTitle = "Reset Password";
+$pageTitle = "Verify Your Email";
 require_once '../includes/header.php';
 ?>
 
@@ -65,8 +59,8 @@ require_once '../includes/header.php';
     <div class="col-md-5">
         <div class="card shadow-sm mt-4">
             <div class="card-body">
-                <h3 class="card-title mb-3">Reset Password</h3>
-                <p class="text-muted">Enter the 6-digit code sent to <strong><?= htmlspecialchars($email) ?></strong>, then choose a new password.</p>
+                <h3 class="card-title mb-3">Verify Your Email</h3>
+                <p class="text-muted">We sent a 6-digit code to <strong><?= htmlspecialchars($email) ?></strong>. Enter it below to activate your account.</p>
 
                 <?php if (isset($_SESSION['success'])): ?>
                     <div class="alert alert-success"><?= htmlspecialchars($_SESSION['success']) ?></div>
@@ -83,32 +77,23 @@ require_once '../includes/header.php';
                 <?php if (!empty($errors)): ?>
                     <div class="alert alert-danger">
                         <?php foreach ($errors as $e): ?><div><?= htmlspecialchars($e) ?></div><?php endforeach; ?>
-                        <?php if (!empty($result['restart'])): ?>
-                            <a href="forgot_password.php" class="d-block mt-2">Request a new code</a>
-                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" action="reset_password.php">
+                <form method="POST" action="verify_email.php">
                     <?= csrf_field() ?>
+                    <input type="hidden" name="email" value="<?= htmlspecialchars($email) ?>">
                     <div class="mb-3">
                         <label class="form-label">6-Digit Code</label>
                         <input type="text" name="code" class="form-control text-center" style="letter-spacing:4px; font-size:1.3rem;"
                                maxlength="6" inputmode="numeric" pattern="[0-9]{6}" required autofocus>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">New Password</label>
-                        <input type="password" name="new_password" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Confirm New Password</label>
-                        <input type="password" name="confirm_password" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Reset Password</button>
+                    <button type="submit" class="btn btn-primary w-100">Verify & Activate</button>
                 </form>
 
-                <form method="POST" action="reset_password.php" class="mt-2">
+                <form method="POST" action="verify_email.php" class="mt-2">
                     <?= csrf_field() ?>
+                    <input type="hidden" name="email" value="<?= htmlspecialchars($email) ?>">
                     <button type="submit" name="resend" value="1" class="btn btn-outline-secondary w-100 btn-sm">Resend Code</button>
                 </form>
             </div>
